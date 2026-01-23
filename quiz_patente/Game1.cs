@@ -6,6 +6,8 @@ namespace quiz_patente
 {
     public class Game1 : Game
     {
+        Texture2D sfondo;
+
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
@@ -14,7 +16,11 @@ namespace quiz_patente
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+
+            _graphics.PreferredBackBufferWidth = 1280;
+            _graphics.PreferredBackBufferHeight = 720;
         }
+
 
         protected override void Initialize()
         {
@@ -27,8 +33,9 @@ namespace quiz_patente
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            // TODO: use this.Content to load your game content here
+            //sfondo = Content.Load<Texture2D>("sfondo");
         }
+
 
         protected override void Update(GameTime gameTime)
         {
@@ -37,16 +44,32 @@ namespace quiz_patente
 
             // TODO: Add your update logic here
 
+            var keyboard = Keyboard.GetState();
+
+            if (keyboard.IsKeyDown(Keys.Left))
+            {
+                // sterza a sinistra
+            }
+
+            if (keyboard.IsKeyDown(Keys.Right))
+            {
+                // sterza a destra
+            }
+
+
             base.Update(gameTime);
         }
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            GraphicsDevice.Clear(Color.Black);
 
-            // TODO: Add your drawing code here
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(sfondo, new Rectangle(0, 0, 1280, 720), Color.White);
+            _spriteBatch.End();
 
             base.Draw(gameTime);
         }
+
     }
 }
