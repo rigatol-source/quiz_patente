@@ -1,51 +1,38 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace quiz_patente
 {
+    public class Domanda
+    {
+        public string Testo;
+        public string[] Risposte;
+        public int Corretta;
+    }
+
     public class Game1 : Game
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private SpriteFont font;
 
-        // === PLACEHOLDER GRAFICA ===
-        Texture2D pixel;
+        Texture2D sfondo;
 
-        // Aree fisse (1280x720)
-        Rectangle schermo = new Rectangle(0, 0, 1280, 720);
-        Rectangle areaStrada = new Rectangle(440, 0, 400, 720);
-        Rectangle areaQuiz = new Rectangle(0, 0, 440, 720);
+        List<Domanda> domande = new List<Domanda>();
+        int indiceDomanda = 0;
 
-        // === STRADA (movimento finto) ===
-        float offsetStrada = 0f;
-        float velocitaStrada = 250f;
-
-        // === QUIZ ===
-        int domandaAttuale = 0;
         int punteggio = 0;
         bool fineGioco = false;
-        string esitoFinale = "";
         string messaggio = "";
-
-        string[] domande =
-        {
-            "Il semaforo rosso indica:",
-            "Il limite di velocità in città è:",
-            "Con la pioggia la distanza di sicurezza:"
-        };
-
-        string[,] risposte =
-        {
-            { "Via libera", "Fermarsi", "Suonare" },
-            { "50 km/h", "90 km/h", "130 km/h" },
-            { "Diminuisce", "Aumenta", "Rimane uguale" }
-        };
-
-        int[] soluzioni = { 1, 0, 1 };
+        string esitoFinale = "";
 
         KeyboardState oldKeyboard;
+        Random random = new Random();
 
         public Game1()
         {
@@ -60,17 +47,33 @@ namespace quiz_patente
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
-
-            // Font (deve esistere Font.spritefont nel Content)
             font = Content.Load<SpriteFont>("Font");
+            sfondo = Content.Load<Texture2D>("sfondo");
 
-            // Pixel bianco (placeholder per disegni)
-            pixel = new Texture2D(GraphicsDevice, 1, 1);
-            pixel.SetData(new[] { Color.White });
+            CaricaDomande();
+            MischiaDomande();
+        }
 
-            // QUANDO AVRAI I DISEGNI:
-            // Texture2D abitacolo = Content.Load<Texture2D>("abitacolo");
-            // Texture2D strada = Content.Load<Texture2D>("strada");
+        void CaricaDomande()
+        {
+            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "domande.csv");
+
+            foreach (var linea in File.ReadAllLines(path))
+            {
+                var parti = linea.Split(';');
+
+                Domanda d = new Domanda();
+                d.Testo = parti[0];
+                d.Risposte = new string[] { parti[1], parti[2], parti[3] };
+                d.Corretta = int.Parse(parti[4]);
+
+                domande.Add(d);
+            }
+        }
+
+        void MischiaDomande()
+        {
+            domande = domande.OrderBy(x => random.Next()).ToList();
         }
 
         protected override void Update(GameTime gameTime)
@@ -82,12 +85,6 @@ namespace quiz_patente
 
             if (!fineGioco)
             {
-                // Movimento strada
-                offsetStrada += velocitaStrada * (float)gameTime.ElapsedGameTime.TotalSeconds;
-                if (offsetStrada > 80)
-                    offsetStrada = 0;
-
-                // Input risposte
                 if (KeyPressed(Keys.D1, keyboard)) Rispondi(0);
                 if (KeyPressed(Keys.D2, keyboard)) Rispondi(1);
                 if (KeyPressed(Keys.D3, keyboard)) Rispondi(2);
@@ -99,7 +96,7 @@ namespace quiz_patente
 
         void Rispondi(int scelta)
         {
-            if (scelta == soluzioni[domandaAttuale])
+            if (scelta == domande[indiceDomanda].Corretta)
             {
                 punteggio++;
                 messaggio = "Risposta CORRETTA!";
@@ -110,16 +107,16 @@ namespace quiz_patente
                 messaggio = "Risposta SBAGLIATA!";
             }
 
-            domandaAttuale++;
+            indiceDomanda++;
 
-            if (domandaAttuale >= domande.Length)
+            if (indiceDomanda >= domande.Count)
                 FineGioco();
         }
 
         void FineGioco()
         {
             fineGioco = true;
-            esitoFinale = punteggio >= 2 ? "PROMOSSO!" : "BOCCIATO!";
+            esitoFinale = punteggio >= domande.Count / 2 ? "PROMOSSO!" : "BOCCIATO!";
         }
 
         bool KeyPressed(Keys key, KeyboardState keyboard)
@@ -129,42 +126,29 @@ namespace quiz_patente
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.DarkGreen);
+            GraphicsDevice.Clear(Color.Black);
 
             _spriteBatch.Begin();
+            _spriteBatch.Draw(sfondo, new Rectangle(0, 0, 1280, 720), Color.White);
 
-            // === STRADA (placeholder) ===
-            _spriteBatch.Draw(pixel, areaStrada, Color.Gray);
-
-            for (int i = 0; i < 10; i++)
-            {
-                Rectangle linea = new Rectangle(
-                    areaStrada.X + areaStrada.Width / 2 - 5,
-                    (int)(i * 80 + offsetStrada),
-                    10,
-                    40
-                );
-
-                _spriteBatch.Draw(pixel, linea, Color.White);
-            }
-
-            // === QUIZ ===
             if (!fineGioco)
             {
-                _spriteBatch.DrawString(font, domande[domandaAttuale], new Vector2(20, 50), Color.White);
+                var d = domande[indiceDomanda];
+
+                _spriteBatch.DrawString(font, d.Testo, new Vector2(50, 50), Color.White);
 
                 for (int i = 0; i < 3; i++)
                 {
                     _spriteBatch.DrawString(
                         font,
-                        (i + 1) + ") " + risposte[domandaAttuale, i],
-                        new Vector2(20, 120 + i * 40),
+                        (i + 1) + ") " + d.Risposte[i],
+                        new Vector2(50, 130 + i * 40),
                         Color.White
                     );
                 }
 
-                _spriteBatch.DrawString(font, "Punteggio: " + punteggio, new Vector2(20, 300), Color.Yellow);
-                _spriteBatch.DrawString(font, messaggio, new Vector2(20, 340), Color.White);
+                _spriteBatch.DrawString(font, "Punteggio: " + punteggio, new Vector2(50, 300), Color.Yellow);
+                _spriteBatch.DrawString(font, messaggio, new Vector2(50, 340), Color.White);
             }
             else
             {
@@ -173,7 +157,6 @@ namespace quiz_patente
             }
 
             _spriteBatch.End();
-
             base.Draw(gameTime);
         }
     }
